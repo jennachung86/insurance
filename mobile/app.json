@@ -17,7 +17,7 @@
     "extra": {
       "supabaseUrl": "https://xxxxxxxx.supabase.co",
       "supabaseAnonKey": "REPLACE_WITH_ANON_KEY",
-      "apiBaseUrl": "https://insurance-alarm.onrender.com"
+      "apiBaseUrl": "https://insurance-backend-r6e1.onrender.com"
     }
   }
 }

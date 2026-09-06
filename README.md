@@ -81,6 +81,7 @@ npm install -D typescript tsx @types/node @types/express @types/cors @types/mult
 |---|---|---|
 | POST | `/api/ocr/parse` | 사진(`photo`) + `org_id`/`item_id` → Claude Vision으로 필드 추출, Storage 저장, `ocr_extractions`에 기록 |
 | POST | `/api/items/:id/apply-ocr` | 검토된 OCR 결과를 실제 `items` 레코드에 반영 |
+| POST | `/api/documents/analyze` | 문서(`file`, PDF/엑셀/HWP/워드/TXT) → Claude로 분석해 항목 필드 추출 |
 | POST | `/api/documents/upload` | 문서(`file`, PDF/엑셀/HWP/워드/TXT) + `item_id` → 텍스트 추출, Storage 저장, `item_documents`에 기록 |
 | GET | `/api/documents/:id/text` | 저장된 문서의 텍스트 재조회 |
 | DELETE | `/api/documents/:id` | 문서 삭제 (Storage 원본 + 레코드) |
