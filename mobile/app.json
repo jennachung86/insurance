@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "일정 공동관리",
+    "slug": "insurance-schedule-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "보험/검사 서류 사진을 첨부하기 위해 사진 라이브러리 접근 권한이 필요합니다.",
+          "cameraPermission": "서류를 촬영해 자동으로 항목을 등록하기 위해 카메라 권한이 필요합니다."
+        }
+      ]
+    ],
+    "extra": {
+      "supabaseUrl": "https://xxxxxxxx.supabase.co",
+      "supabaseAnonKey": "REPLACE_WITH_ANON_KEY",
+      "apiBaseUrl": "https://insurance-alarm.onrender.com"
+    }
+  }
+}
