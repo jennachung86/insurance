@@ -86,7 +86,7 @@ export const DEFAULT_TAB_LABELS: TabLabels = {
 
 export interface ExtractedDocumentFields {
   item_name: string;
-  category: '보험' | '검사' | '기타';
+  category: string | null;
   issuer: string | null;
   due_date: string | null;
   contract_period_start: string | null;

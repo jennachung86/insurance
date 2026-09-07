@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import BottomTabBar, { type TabKey } from '../components/BottomTabBar';
 import CellEditModal from '../components/CellEditModal';
 import SettingsScreen from '../components/SettingsScreen';
+import BulkImportScreen from '../components/BulkImportScreen';
 import UpcomingTab from './tabs/UpcomingTab';
 import CalendarTab from './tabs/CalendarTab';
 import TrackingTab from './tabs/TrackingTab';
@@ -45,6 +46,7 @@ export default function MainScreen({
   const [tabLabels, setTabLabels] = useState<TabLabels>(DEFAULT_TAB_LABELS);
   const [editingItem, setEditingItem] = useState<ScheduleItem | null | undefined>(undefined); // undefined = 닫힘
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [bulkImportVisible, setBulkImportVisible] = useState(false);
 
   const loadData = useCallback(async () => {
     const [{ data: itemRows }, { data: memberRows }, { data: fieldRows }, { data: categoryRows }, { data: orgRow }] =
@@ -154,6 +156,7 @@ export default function MainScreen({
             rows={allRows}
             title={tabLabels.upcoming}
             onAddNew={() => setEditingItem(null)}
+            onBulkImport={() => setBulkImportVisible(true)}
             onRowPress={openItemBySchedule}
           />
         )}
@@ -203,6 +206,14 @@ export default function MainScreen({
         tabLabels={tabLabels}
         onClose={() => setSettingsVisible(false)}
         onChanged={loadData}
+      />
+
+      <BulkImportScreen
+        visible={bulkImportVisible}
+        orgId={orgId}
+        categoryOptions={categoryOptions}
+        onClose={() => setBulkImportVisible(false)}
+        onImported={loadData}
       />
     </View>
   );

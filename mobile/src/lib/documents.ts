@@ -35,6 +35,38 @@ export async function analyzeItemDocument(params: {
 }
 
 /**
+ * 여러 건이 나열된 표 형태 문서(장비 목록, 차량 명단 등)를 Claude로 한 번에 분석해
+ * 항목 배열로 추출한다. analyzeItemDocument와 달리 한 파일에서 여러 항목을 뽑아낸다.
+ */
+export async function analyzeItemDocumentBulk(params: {
+  uri: string;
+  fileName: string;
+  mimeType: string;
+}): Promise<ExtractedDocumentFields[]> {
+  const token = await getAccessToken();
+  if (!token) throw new Error('로그인이 필요합니다.');
+
+  const form = new FormData();
+  form.append('file', {
+    uri: params.uri,
+    name: params.fileName,
+    type: params.mimeType,
+  } as unknown as Blob);
+
+  const res = await fetch(`${API_BASE_URL}/api/documents/bulk-analyze`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || '문서 일괄 분석에 실패했습니다.');
+  }
+  return data.items as ExtractedDocumentFields[];
+}
+
+/**
  * 문서 파일(.pdf/.xlsx/.xls/.hwp/.docx/.txt)을 백엔드로 업로드해
  * 텍스트 추출까지 마친 뒤 저장된 첨부 레코드를 받는다.
  * uri/name/mimeType은 expo-document-picker 결과의 asset 값을 그대로 넘기면 된다.

@@ -6,6 +6,7 @@ import { requireAuth, type AuthedRequest } from '../middleware/auth.js';
 import {
   extractDocumentText,
   analyzeDocumentWithClaude,
+  analyzeDocumentBulk,
   SUPPORTED_DOCUMENT_EXTENSIONS,
   type SupportedDocumentExtension,
 } from '../services/documentExtract.js';
@@ -153,6 +154,31 @@ router.post('/analyze', requireAuth, upload.single('file'), async (req: AuthedRe
   } catch (err) {
     console.error('문서 분석 실패:', err);
     const message = err instanceof Error ? err.message : '문서 분석 중 오류가 발생했습니다.';
+    res.status(500).json({ error: message });
+  }
+});
+
+/**
+ * POST /api/documents/bulk-analyze
+ * multipart/form-data:
+ *   file - 여러 건이 나열된 표 형태 문서 (.pdf, .xlsx, .xls, .hwp, .docx, .txt)
+ *
+ * 동작: 파일 안의 여러 행(장비/차량/계약 등)을 Claude로 한 번에 분석해
+ * 항목 배열로 반환한다. 모바일에서 이 배열을 검토·선택해 한꺼번에 등록할 수 있다.
+ */
+router.post('/bulk-analyze', requireAuth, upload.single('file'), async (req: AuthedRequest, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: '파일(file)이 필요합니다.' });
+    }
+
+    const ext = path.extname(req.file.originalname).toLowerCase() as SupportedDocumentExtension;
+    const items = await analyzeDocumentBulk(req.file.buffer, ext);
+
+    res.json({ items });
+  } catch (err) {
+    console.error('문서 일괄 분석 실패:', err);
+    const message = err instanceof Error ? err.message : '문서 일괄 분석 중 오류가 발생했습니다.';
     res.status(500).json({ error: message });
   }
 });
