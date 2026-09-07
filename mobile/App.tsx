@@ -47,7 +47,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.flex}>
-      <MainScreen orgId={orgId} />
+      <MainScreen orgId={orgId} userId={session.user.id} userEmail={session.user.email ?? ''} />
     </SafeAreaView>
   );
 }

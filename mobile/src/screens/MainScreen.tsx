@@ -1,26 +1,37 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { supabase } from '../lib/supabase';
-import UpcomingEventsList from '../components/UpcomingEventsList';
-import DataTable from '../components/DataTable';
-import CompletedList from '../components/CompletedList';
+import BottomTabBar, { type TabKey } from '../components/BottomTabBar';
 import CellEditModal from '../components/CellEditModal';
+import UpcomingTab from './tabs/UpcomingTab';
+import CalendarTab from './tabs/CalendarTab';
+import TrackingTab from './tabs/TrackingTab';
+import ProfileTab from './tabs/ProfileTab';
 import type { CustomFieldDefinition, OrgMember, ScheduleItem, ScheduleRow } from '../types';
 
 /**
- * 메인 화면
- *  - 상단: Upcoming Events (만료 임박 일정)
- *  - 중앙: 편집 가능한 데이터 테이블 (진행중 항목)
- *  - 하단: 완료된 항목 목록
+ * 메인 화면 - 하단 4개 탭으로 구성:
+ *  1. 업무 알림 (Upcoming Events, D-day, 일정 추가)
+ *  2. 캘린더
+ *  3. 작업추적/기록 (진행중/완료)
+ *  4. 내 정보
  *
  * orgId는 로그인한 사용자가 속한 (첫 번째) 조직으로 가정한다.
  * 여러 조직을 지원하려면 조직 선택 드롭다운을 헤더에 추가하면 된다.
  */
-export default function MainScreen({ orgId }: { orgId: string }) {
+export default function MainScreen({
+  orgId,
+  userId,
+  userEmail,
+}: {
+  orgId: string;
+  userId: string;
+  userEmail: string;
+}) {
+  const [activeTab, setActiveTab] = useState<TabKey>('upcoming');
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [customFieldDefs, setCustomFieldDefs] = useState<CustomFieldDefinition[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
   const [editingItem, setEditingItem] = useState<ScheduleItem | null | undefined>(undefined); // undefined = 닫힘
 
   const loadData = useCallback(async () => {
@@ -103,12 +114,6 @@ export default function MainScreen({ orgId }: { orgId: string }) {
   const inProgressRows = useMemo(() => allRows.filter((r) => r.status === 'in_progress'), [allRows]);
   const completedRows = useMemo(() => allRows.filter((r) => r.status === 'completed'), [allRows]);
 
-  async function handleRefresh() {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  }
-
   function openItemBySchedule(row: ScheduleRow) {
     const found = items.find((i) => i.id === row.item_id) ?? null;
     setEditingItem(found);
@@ -116,26 +121,25 @@ export default function MainScreen({ orgId }: { orgId: string }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>일정 공동관리</Text>
-        <Pressable style={styles.addButton} onPress={() => setEditingItem(null)}>
-          <Text style={styles.addButtonText}>+ 추가</Text>
-        </Pressable>
+      <View style={styles.screenArea}>
+        {activeTab === 'upcoming' && (
+          <UpcomingTab rows={allRows} onAddNew={() => setEditingItem(null)} onRowPress={openItemBySchedule} />
+        )}
+        {activeTab === 'calendar' && <CalendarTab rows={allRows} onRowPress={openItemBySchedule} />}
+        {activeTab === 'tracking' && (
+          <TrackingTab
+            inProgressRows={inProgressRows}
+            completedRows={completedRows}
+            onRowPress={openItemBySchedule}
+            onChanged={loadData}
+          />
+        )}
+        {activeTab === 'profile' && (
+          <ProfileTab orgId={orgId} userId={userId} userEmail={userEmail} members={members} />
+        )}
       </View>
 
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <SectionTitle>Upcoming Events</SectionTitle>
-        <UpcomingEventsList rows={allRows} />
-
-        <SectionTitle>진행 중인 항목</SectionTitle>
-        <DataTable rows={inProgressRows} onRowPress={openItemBySchedule} onChanged={loadData} />
-
-        <SectionTitle>완료된 항목</SectionTitle>
-        <CompletedList rows={completedRows} onChanged={loadData} />
-      </ScrollView>
+      <BottomTabBar active={activeTab} onChange={setActiveTab} />
 
       <CellEditModal
         visible={editingItem !== undefined}
@@ -150,34 +154,7 @@ export default function MainScreen({ orgId }: { orgId: string }) {
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <Text style={styles.sectionTitle}>{children}</Text>;
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 56,
-    paddingBottom: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  title: { fontSize: 18, fontWeight: '800', color: '#111827' },
-  addButton: { backgroundColor: '#4f46e5', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
-  addButtonText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  scrollContent: { paddingBottom: 40, gap: 4 },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#64748b',
-    marginTop: 20,
-    marginBottom: 8,
-    marginHorizontal: 16,
-    textTransform: 'uppercase',
-  },
+  screenArea: { flex: 1 },
 });
