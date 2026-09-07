@@ -14,7 +14,14 @@ import { supabase } from '../lib/supabase';
 import PhotoAttachButton from './PhotoAttachButton';
 import FileAttachButton from './FileAttachButton';
 import DocumentAttachments from './DocumentAttachments';
-import type { CustomFieldDefinition, ExtractedDocumentFields, OrgMember, ScheduleItem, TimeUnit } from '../types';
+import type {
+  CategoryOption,
+  CustomFieldDefinition,
+  ExtractedDocumentFields,
+  OrgMember,
+  ScheduleItem,
+  TimeUnit,
+} from '../types';
 
 interface Props {
   visible: boolean;
@@ -22,11 +29,11 @@ interface Props {
   item: ScheduleItem | null; // null이면 신규 생성 모드
   members: OrgMember[];
   customFieldDefs: CustomFieldDefinition[];
+  categoryOptions: CategoryOption[]; // 조직이 자유롭게 편집한 분류 목록
   onClose: () => void;
   onSaved: () => void; // 저장 후 목록 새로고침 트리거
 }
 
-const CATEGORY_OPTIONS = ['보험', '검사', '기타'];
 const TIME_UNIT_OPTIONS: { value: TimeUnit; label: string }[] = [
   { value: 'hour', label: '시간' },
   { value: 'day', label: '일' },
@@ -45,11 +52,11 @@ interface ScheduleForm {
 }
 
 let nextTempKey = 1;
-function makeSchedule(partial?: Partial<ScheduleForm>): ScheduleForm {
+function makeSchedule(defaultCategory: string, partial?: Partial<ScheduleForm>): ScheduleForm {
   return {
     key: `new-${nextTempKey++}`,
     id: null,
-    category: '보험',
+    category: defaultCategory,
     dueDate: null,
     remindValue: '7',
     remindUnit: 'day',
@@ -65,9 +72,12 @@ export default function CellEditModal({
   item,
   members,
   customFieldDefs,
+  categoryOptions,
   onClose,
   onSaved,
 }: Props) {
+  const categoryLabels = categoryOptions.map((c) => c.label);
+  const defaultCategory = categoryLabels[0] ?? '기타';
   const isNew = item === null;
 
   const [itemName, setItemName] = useState(item?.item_name ?? '');
@@ -76,7 +86,7 @@ export default function CellEditModal({
   const [schedules, setSchedules] = useState<ScheduleForm[]>(() =>
     item && item.schedules.length > 0
       ? item.schedules.map((s) =>
-          makeSchedule({
+          makeSchedule(defaultCategory, {
             id: s.id,
             category: s.category,
             dueDate: s.due_date ? new Date(s.due_date) : null,
@@ -87,7 +97,7 @@ export default function CellEditModal({
             ),
           })
         )
-      : [makeSchedule()]
+      : [makeSchedule(defaultCategory)]
   );
   const [deletedScheduleIds, setDeletedScheduleIds] = useState<string[]>([]);
   const [datePickerFor, setDatePickerFor] = useState<string | null>(null); // 날짜 선택 중인 schedule의 key
@@ -98,8 +108,8 @@ export default function CellEditModal({
   }
 
   function addScheduleFromExtraction(fields: ExtractedDocumentFields) {
-    const newSchedule = makeSchedule({
-      category: fields.category ?? '보험',
+    const newSchedule = makeSchedule(defaultCategory, {
+      category: fields.category ?? defaultCategory,
       dueDate: fields.due_date ? new Date(fields.due_date) : null,
       customValues: {
         issuer: fields.issuer ?? '',
@@ -138,7 +148,7 @@ export default function CellEditModal({
   }
 
   function handleAddSchedule() {
-    setSchedules((prev) => [...prev, makeSchedule()]);
+    setSchedules((prev) => [...prev, makeSchedule(defaultCategory)]);
   }
 
   function handleRemoveSchedule(key: string) {
@@ -282,7 +292,7 @@ export default function CellEditModal({
 
             <Field label="분류">
               <View style={styles.chipRow}>
-                {CATEGORY_OPTIONS.map((opt) => (
+                {categoryLabels.map((opt) => (
                   <Chip
                     key={opt}
                     label={opt}

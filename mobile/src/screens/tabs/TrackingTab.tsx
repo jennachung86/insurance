@@ -5,6 +5,7 @@ import CompletedList from '../../components/CompletedList';
 import type { ScheduleRow } from '../../types';
 
 interface Props {
+  title: string;
   inProgressRows: ScheduleRow[];
   completedRows: ScheduleRow[];
   onRowPress: (row: ScheduleRow) => void;
@@ -14,13 +15,13 @@ interface Props {
 type SubTab = 'in_progress' | 'completed';
 
 /** 탭3: 작업추적/기록 - 진행 중(보류 포함) / 완료된 작업을 서브탭으로 전환하며 확인. */
-export default function TrackingTab({ inProgressRows, completedRows, onRowPress, onChanged }: Props) {
+export default function TrackingTab({ title, inProgressRows, completedRows, onRowPress, onChanged }: Props) {
   const [subTab, setSubTab] = useState<SubTab>('in_progress');
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>작업 추적 / 기록</Text>
+        <Text style={styles.title}>{title}</Text>
       </View>
 
       <View style={styles.subTabRow}>

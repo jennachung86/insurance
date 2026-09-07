@@ -9,12 +9,13 @@ function daysUntil(dueDate: string): number {
 
 interface Props {
   rows: ScheduleRow[];
+  title: string;
   onAddNew: () => void;
   onRowPress: (row: ScheduleRow) => void;
 }
 
 /** 탭1: 업무 알림 - 만료 임박한 모든 일정을 D-day 가까운 순으로 보여주고, 일정을 바로 추가할 수 있다. */
-export default function UpcomingTab({ rows, onAddNew, onRowPress }: Props) {
+export default function UpcomingTab({ rows, title, onAddNew, onRowPress }: Props) {
   const upcoming = rows
     .filter((r) => r.status === 'in_progress' && r.due_date)
     .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
@@ -24,7 +25,7 @@ export default function UpcomingTab({ rows, onAddNew, onRowPress }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>업무 알림</Text>
+        <Text style={styles.title}>{title}</Text>
         <Pressable style={styles.addButton} onPress={onAddNew}>
           <Text style={styles.addButtonText}>+ 일정 추가</Text>
         </Pressable>

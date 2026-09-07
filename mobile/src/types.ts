@@ -64,6 +64,26 @@ export interface OrgMember {
   role: 'master' | 'manager' | 'member';
 }
 
+/** 조직이 자유롭게 추가/삭제하는 분류(카테고리) 목록. 기존엔 '보험/검사/기타'로 고정이었다. */
+export interface CategoryOption {
+  id: string;
+  org_id: string;
+  label: string;
+  sort_order: number;
+}
+
+export type TabKeyName = 'upcoming' | 'calendar' | 'tracking' | 'profile';
+
+/** 하단 4개 탭의 이름을 조직마다 원하는 대로 바꿀 수 있게 저장하는 값. */
+export type TabLabels = Record<TabKeyName, string>;
+
+export const DEFAULT_TAB_LABELS: TabLabels = {
+  upcoming: '업무 알림',
+  calendar: '캘린더',
+  tracking: '작업추적/기록',
+  profile: '내 정보',
+};
+
 export interface ExtractedDocumentFields {
   item_name: string;
   category: '보험' | '검사' | '기타';

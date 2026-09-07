@@ -4,10 +4,12 @@ import { supabase } from '../../lib/supabase';
 import type { OrgMember } from '../../types';
 
 interface Props {
+  title: string;
   orgId: string;
   userId: string;
   userEmail: string;
   members: OrgMember[];
+  onOpenSettings: () => void;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -17,7 +19,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 /** 탭4: 내 정보 - 로그인 계정/소속 조직/역할 확인 + 로그아웃. */
-export default function ProfileTab({ orgId, userId, userEmail, members }: Props) {
+export default function ProfileTab({ title, orgId, userId, userEmail, members, onOpenSettings }: Props) {
   const [fullName, setFullName] = useState<string>('');
   const [orgName, setOrgName] = useState<string>('');
 
@@ -53,7 +55,7 @@ export default function ProfileTab({ orgId, userId, userEmail, members }: Props)
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>내 정보</Text>
+        <Text style={styles.title}>{title}</Text>
       </View>
 
       <View style={styles.body}>
@@ -67,6 +69,10 @@ export default function ProfileTab({ orgId, userId, userEmail, members }: Props)
           <InfoRow label="소속 조직" value={orgName || '-'} />
           <InfoRow label="역할" value={ROLE_LABELS[myRole] ?? myRole} />
         </View>
+
+        <Pressable style={styles.settingsButton} onPress={onOpenSettings}>
+          <Text style={styles.settingsButtonText}>⚙️ 분류 · 항목 · 탭 이름 설정</Text>
+        </Pressable>
 
         <Pressable style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutButtonText}>로그아웃</Text>
@@ -128,6 +134,17 @@ const styles = StyleSheet.create({
   },
   infoLabel: { fontSize: 13, color: '#6b7280' },
   infoValue: { fontSize: 13, fontWeight: '600', color: '#111827' },
+  settingsButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: '#eef2ff',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    marginBottom: 12,
+  },
+  settingsButtonText: { color: '#4f46e5', fontWeight: '700', fontSize: 14 },
   logoutButton: {
     width: '100%',
     paddingVertical: 12,

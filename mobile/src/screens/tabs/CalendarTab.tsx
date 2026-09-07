@@ -21,11 +21,12 @@ function buildMonthGrid(year: number, month: number): Date[] {
 
 interface Props {
   rows: ScheduleRow[];
+  title: string;
   onRowPress: (row: ScheduleRow) => void;
 }
 
 /** 탭2: 캘린더 - 월별로 만료일이 있는 일정을 점으로 표시하고, 날짜를 누르면 그날 일정 목록을 보여준다. */
-export default function CalendarTab({ rows, onRowPress }: Props) {
+export default function CalendarTab({ rows, title, onRowPress }: Props) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-11
@@ -55,7 +56,7 @@ export default function CalendarTab({ rows, onRowPress }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>캘린더</Text>
+        <Text style={styles.title}>{title}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollBody}>
