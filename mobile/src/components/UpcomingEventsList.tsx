@@ -1,17 +1,17 @@
 import React from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import type { ScheduleItem } from '../types';
+import type { ScheduleRow } from '../types';
 
 function daysUntil(dueDate: string): number {
   const diffMs = new Date(dueDate).getTime() - Date.now();
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
-/** 화면 상단: 만료 임박 일정 (기본 14일 이내, 가까운 순 정렬). */
-export default function UpcomingEventsList({ items }: { items: ScheduleItem[] }) {
-  const upcoming = items
-    .filter((i) => i.status === 'in_progress' && i.due_date)
-    .filter((i) => daysUntil(i.due_date!) <= 14)
+/** 화면 상단: 만료 임박 일정 (기본 14일 이내, 가까운 순 정렬). 한 품목의 여러 일정도 각각 카드로 보인다. */
+export default function UpcomingEventsList({ rows }: { rows: ScheduleRow[] }) {
+  const upcoming = rows
+    .filter((r) => r.status === 'in_progress' && r.due_date)
+    .filter((r) => daysUntil(r.due_date!) <= 14)
     .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
 
   if (upcoming.length === 0) {
@@ -27,21 +27,21 @@ export default function UpcomingEventsList({ items }: { items: ScheduleItem[] })
       horizontal
       showsHorizontalScrollIndicator={false}
       data={upcoming}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(row) => row.schedule_id}
       contentContainerStyle={styles.list}
-      renderItem={({ item }) => {
-        const d = daysUntil(item.due_date!);
+      renderItem={({ item: row }) => {
+        const d = daysUntil(row.due_date!);
         const urgent = d <= 3;
         return (
           <View style={[styles.card, urgent && styles.cardUrgent]}>
-            <Text style={styles.cardCategory}>{item.category}</Text>
+            <Text style={styles.cardCategory}>{row.category}</Text>
             <Text style={styles.cardName} numberOfLines={2}>
-              {item.item_name}
+              {row.item_name}
             </Text>
             <Text style={[styles.cardDday, urgent && styles.cardDdayUrgent]}>
               {d <= 0 ? '오늘 만료' : `D-${d}`}
             </Text>
-            <Text style={styles.cardDate}>{item.due_date}</Text>
+            <Text style={styles.cardDate}>{row.due_date}</Text>
           </View>
         );
       }}

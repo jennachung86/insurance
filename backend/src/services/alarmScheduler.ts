@@ -6,15 +6,18 @@ import { sendKakaoAlimtalk } from './notifiers/kakao.js';
 
 interface DueAlarmRule {
   id: string;
-  item_id: string;
+  schedule_id: string;
   channels: ('push' | 'sms' | 'kakao')[];
-  items: {
+  item_schedules: {
     id: string;
-    org_id: string;
-    item_name: string;
     category: string;
     due_date: string | null;
-    assignee_user_id: string | null;
+    items: {
+      id: string;
+      org_id: string;
+      item_name: string;
+      assignee_user_id: string | null;
+    } | null;
   } | null;
 }
 
@@ -23,8 +26,9 @@ interface DueAlarmRule {
  * (조직 공통 수신자 + 항목 전용 수신자 + 담당자 본인)
  */
 async function dispatchAlarm(supabase: ReturnType<typeof getServiceClient>, rule: DueAlarmRule) {
-  const item = rule.items;
-  if (!item) return;
+  const schedule = rule.item_schedules;
+  const item = schedule?.items;
+  if (!schedule || !item) return;
 
   const [{ data: recipients }, { data: assigneeProfile }] = await Promise.all([
     supabase
@@ -42,7 +46,7 @@ async function dispatchAlarm(supabase: ReturnType<typeof getServiceClient>, rule
   const pushTokens = [...new Set(allRecipients.map((r) => r.push_token).filter(Boolean))] as string[];
 
   const title = `[일정 알림] ${item.item_name}`;
-  const body = `${item.category} 항목의 만료/납입일이 ${item.due_date ?? '미정'} 입니다. 확인해주세요.`;
+  const body = `${schedule.category} 항목의 만료/납입일이 ${schedule.due_date ?? '미정'} 입니다. 확인해주세요.`;
 
   const logs: {
     alarm_rule_id: string;
@@ -82,7 +86,7 @@ async function dispatchAlarm(supabase: ReturnType<typeof getServiceClient>, rule
       } else if (channel === 'kakao') {
         const results = await sendKakaoAlimtalk(
           phoneNumbers,
-          { itemName: item.item_name, dueDate: item.due_date ?? '미정' },
+          { itemName: item.item_name, dueDate: schedule.due_date ?? '미정' },
           body
         );
         for (const r of results) {
@@ -125,8 +129,8 @@ async function runDueAlarmsCheck() {
   const { data: dueRules, error } = await supabase
     .from('alarm_rules')
     .select(
-      `id, item_id, channels,
-       items ( id, org_id, item_name, category, due_date, assignee_user_id )`
+      `id, schedule_id, channels,
+       item_schedules ( id, category, due_date, items ( id, org_id, item_name, assignee_user_id ) )`
     )
     .eq('is_active', true)
     .lte('next_trigger_at', new Date().toISOString());

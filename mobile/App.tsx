@@ -52,24 +52,44 @@ export default function App() {
   );
 }
 
-/** 최소 구성의 이메일/비밀번호 로그인 + 회원가입 화면 (Supabase Auth). */
+// 사용자가 이메일 없이 "아이디"만 입력해도 Supabase(이메일 기반 인증)와 호환되도록,
+// '@'가 없는 입력값은 내부 전용 가짜 도메인을 붙여 이메일 형태로 바꿔준다.
+const USERNAME_DOMAIN = '@insurance-schedule.local';
+
+function toAuthEmail(idOrEmail: string): string {
+  const trimmed = idOrEmail.trim();
+  return trimmed.includes('@') ? trimmed : `${trimmed.toLowerCase()}${USERNAME_DOMAIN}`;
+}
+
+/** 최소 구성의 아이디(또는 이메일)/비밀번호 로그인 + 회원가입 화면 (Supabase Auth). */
 function LoginScreen() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [email, setEmail] = useState('');
+  const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
+    if (!loginId || !password) {
+      Alert.alert('입력 오류', '아이디(또는 이메일)와 비밀번호를 입력하세요.');
+      return;
+    }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: toAuthEmail(loginId),
+      password,
+    });
     setLoading(false);
     if (error) Alert.alert('로그인 실패', error.message);
   }
 
   async function handleSignUp() {
-    if (!email || !password) {
-      Alert.alert('입력 오류', '이메일과 비밀번호를 입력하세요.');
+    if (!loginId || !password) {
+      Alert.alert('입력 오류', '아이디(또는 이메일)와 비밀번호를 입력하세요.');
+      return;
+    }
+    if (loginId.includes(' ')) {
+      Alert.alert('입력 오류', '아이디에는 공백을 사용할 수 없습니다.');
       return;
     }
     if (password.length < 6) {
@@ -77,7 +97,10 @@ function LoginScreen() {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email: toAuthEmail(loginId),
+      password,
+    });
     if (error) {
       setLoading(false);
       Alert.alert('회원가입 실패', error.message);
@@ -86,7 +109,7 @@ function LoginScreen() {
 
     const userId = data.user?.id;
     if (userId) {
-      await supabase.from('profiles').upsert({ id: userId, full_name: fullName || email });
+      await supabase.from('profiles').upsert({ id: userId, full_name: fullName || loginId });
     }
     setLoading(false);
 
@@ -117,11 +140,11 @@ function LoginScreen() {
       )}
       <TextInput
         style={styles.input}
-        placeholder="이메일"
+        placeholder="아이디 (또는 이메일)"
         autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
+        autoCorrect={false}
+        value={loginId}
+        onChangeText={setLoginId}
       />
       <TextInput
         style={styles.input}

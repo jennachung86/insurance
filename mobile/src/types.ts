@@ -13,21 +13,48 @@ export interface CustomFieldDefinition {
   is_active: boolean;
 }
 
-export interface ScheduleItem {
+/** 품목(item) 하나에 딸린 일정 하나 (분류 + 만료일 + 알람주기). 한 품목에 여러 개 등록 가능. */
+export interface ItemSchedule {
   id: string;
-  org_id: string;
-  item_name: string;
+  item_id: string;
   category: string;
   due_date: string | null; // YYYY-MM-DD
   remind_before_value: number;
   remind_before_unit: TimeUnit;
-  assignee_user_id: string | null;
-  assignee_name?: string | null; // 조인해서 채움
   status: ItemStatus;
-  photo_url: string | null;
   custom_fields: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  completed_at: string | null;
+}
+
+/** 품목(예: "자동차") - 여러 개의 일정(보험/검사 등)을 가질 수 있다. */
+export interface ScheduleItem {
+  id: string;
+  org_id: string;
+  item_name: string;
+  assignee_user_id: string | null;
+  assignee_name?: string | null; // 조인해서 채움
+  photo_url: string | null;
+  created_at: string;
+  updated_at: string;
+  schedules: ItemSchedule[];
+}
+
+/** 화면 표시용 평면 행: 품목 + 일정 하나를 합친 것 (테이블/카드는 이 단위로 한 줄씩 보여준다). */
+export interface ScheduleRow {
+  item_id: string;
+  schedule_id: string;
+  item_name: string;
+  category: string;
+  due_date: string | null;
+  remind_before_value: number;
+  remind_before_unit: TimeUnit;
+  assignee_user_id: string | null;
+  assignee_name?: string | null;
+  status: ItemStatus;
+  photo_url: string | null;
+  custom_fields: Record<string, unknown>;
   completed_at: string | null;
 }
 

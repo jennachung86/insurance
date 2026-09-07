@@ -5,7 +5,7 @@ import UpcomingEventsList from '../components/UpcomingEventsList';
 import DataTable from '../components/DataTable';
 import CompletedList from '../components/CompletedList';
 import CellEditModal from '../components/CellEditModal';
-import type { CustomFieldDefinition, OrgMember, ScheduleItem } from '../types';
+import type { CustomFieldDefinition, OrgMember, ScheduleItem, ScheduleRow } from '../types';
 
 /**
  * 메인 화면
@@ -29,9 +29,10 @@ export default function MainScreen({ orgId }: { orgId: string }) {
         .from('items')
         // 'profiles!assignee_user_id' : items.assignee_user_id 로 연결된 FK를 명시해
         // (담당자) profiles 를 임베드한다. PostgREST 임베딩 힌트 문법 - alias 없이 사용.
-        .select('*, profiles!assignee_user_id ( full_name )')
+        // 'item_schedules' : 한 품목에 딸린 여러 개의 일정(보험/검사 등)을 함께 가져온다.
+        .select('*, profiles!assignee_user_id ( full_name ), item_schedules ( * )')
         .eq('org_id', orgId)
-        .order('due_date', { ascending: true }),
+        .order('created_at', { ascending: true }),
       supabase
         .from('organization_members')
         .select('user_id, role, profiles ( full_name )')
@@ -47,6 +48,7 @@ export default function MainScreen({ orgId }: { orgId: string }) {
       (itemRows ?? []).map((row: any) => ({
         ...row,
         assignee_name: row.profiles?.full_name ?? null,
+        schedules: row.item_schedules ?? [],
       }))
     );
     setMembers(
@@ -75,13 +77,41 @@ export default function MainScreen({ orgId }: { orgId: string }) {
     };
   }, [orgId, loadData]);
 
-  const inProgressItems = useMemo(() => items.filter((i) => i.status === 'in_progress'), [items]);
-  const completedItems = useMemo(() => items.filter((i) => i.status === 'completed'), [items]);
+  // 품목(item) + 각 일정(schedule)을 평평하게 펼쳐서 화면에 한 줄씩 보여줄 행 목록을 만든다.
+  const allRows = useMemo<ScheduleRow[]>(
+    () =>
+      items.flatMap((item) =>
+        item.schedules.map((s) => ({
+          item_id: item.id,
+          schedule_id: s.id,
+          item_name: item.item_name,
+          category: s.category,
+          due_date: s.due_date,
+          remind_before_value: s.remind_before_value,
+          remind_before_unit: s.remind_before_unit,
+          assignee_user_id: item.assignee_user_id,
+          assignee_name: item.assignee_name,
+          status: s.status,
+          photo_url: item.photo_url,
+          custom_fields: s.custom_fields,
+          completed_at: s.completed_at,
+        }))
+      ),
+    [items]
+  );
+
+  const inProgressRows = useMemo(() => allRows.filter((r) => r.status === 'in_progress'), [allRows]);
+  const completedRows = useMemo(() => allRows.filter((r) => r.status === 'completed'), [allRows]);
 
   async function handleRefresh() {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
+  }
+
+  function openItemBySchedule(row: ScheduleRow) {
+    const found = items.find((i) => i.id === row.item_id) ?? null;
+    setEditingItem(found);
   }
 
   return (
@@ -98,13 +128,13 @@ export default function MainScreen({ orgId }: { orgId: string }) {
         contentContainerStyle={styles.scrollContent}
       >
         <SectionTitle>Upcoming Events</SectionTitle>
-        <UpcomingEventsList items={items} />
+        <UpcomingEventsList rows={allRows} />
 
         <SectionTitle>진행 중인 항목</SectionTitle>
-        <DataTable items={inProgressItems} onRowPress={setEditingItem} onChanged={loadData} />
+        <DataTable rows={inProgressRows} onRowPress={openItemBySchedule} onChanged={loadData} />
 
         <SectionTitle>완료된 항목</SectionTitle>
-        <CompletedList items={completedItems} onChanged={loadData} />
+        <CompletedList rows={completedRows} onChanged={loadData} />
       </ScrollView>
 
       <CellEditModal

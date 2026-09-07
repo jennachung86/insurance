@@ -1,15 +1,15 @@
 import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from '../lib/supabase';
-import type { ScheduleItem } from '../types';
+import type { ScheduleRow } from '../types';
 
 /** 화면 하단: 완료된 항목 목록. 체크 해제 시 다시 진행중 테이블로 되돌릴 수 있다. */
-export default function CompletedList({ items, onChanged }: { items: ScheduleItem[]; onChanged: () => void }) {
-  async function reopen(item: ScheduleItem) {
+export default function CompletedList({ rows, onChanged }: { rows: ScheduleRow[]; onChanged: () => void }) {
+  async function reopen(row: ScheduleRow) {
     const { error } = await supabase
-      .from('items')
+      .from('item_schedules')
       .update({ status: 'in_progress', completed_at: null })
-      .eq('id', item.id);
+      .eq('id', row.schedule_id);
     if (error) {
       Alert.alert('처리 실패', error.message);
       return;
@@ -17,7 +17,7 @@ export default function CompletedList({ items, onChanged }: { items: ScheduleIte
     onChanged();
   }
 
-  if (items.length === 0) {
+  if (rows.length === 0) {
     return (
       <View style={styles.emptyBox}>
         <Text style={styles.emptyText}>완료된 항목이 없습니다.</Text>
@@ -27,15 +27,15 @@ export default function CompletedList({ items, onChanged }: { items: ScheduleIte
 
   return (
     <View style={styles.container}>
-      {items.map((item) => (
-        <View key={item.id} style={styles.row}>
-          <Pressable style={[styles.checkbox, styles.checkboxChecked]} onPress={() => reopen(item)}>
+      {rows.map((row) => (
+        <View key={row.schedule_id} style={styles.row}>
+          <Pressable style={[styles.checkbox, styles.checkboxChecked]} onPress={() => reopen(row)}>
             <Text style={styles.checkMark}>✓</Text>
           </Pressable>
           <View style={styles.info}>
-            <Text style={styles.itemName}>{item.item_name}</Text>
+            <Text style={styles.itemName}>{row.item_name}</Text>
             <Text style={styles.meta}>
-              {item.category} · 완료일 {item.completed_at?.slice(0, 10) ?? '-'}
+              {row.category} · 완료일 {row.completed_at?.slice(0, 10) ?? '-'}
             </Text>
           </View>
         </View>

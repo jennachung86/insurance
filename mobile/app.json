@@ -19,8 +19,8 @@
       ]
     ],
     "extra": {
-      "supabaseUrl": "https://xxxxxxxx.supabase.co",
-      "supabaseAnonKey": "REPLACE_WITH_ANON_KEY",
+      "supabaseUrl": "https://kazpuluojlczlxpfdkcs.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImthenB1bHVvamxjemx4cGZka2NzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2OTg5NDUsImV4cCI6MjEwNDI3NDk0NX0.tdflyCg9zEAMpY2EK6xA7F5WcHnJOtmXIX_HP54fLd0",
       "apiBaseUrl": "https://insurance-backend-r6e1.onrender.com",
       "eas": {
         "projectId": "7db3b863-7cb9-4499-9516-16c07894c2a0"

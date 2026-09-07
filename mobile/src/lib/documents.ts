@@ -1,5 +1,38 @@
 import { API_BASE_URL, getAccessToken } from './supabase';
-import type { ItemDocument } from '../types';
+import type { ExtractedDocumentFields, ItemDocument } from '../types';
+
+/**
+ * 문서 파일(.pdf/.xlsx/.xls/.hwp/.docx/.txt)을 Claude로 분석해
+ * 항목명/분류/만료일 등 구조화된 필드를 자동으로 추출한다.
+ * 사진 OCR과 동일하게, 항목을 아직 저장하지 않은 신규 생성 화면에서도 사용할 수 있다.
+ */
+export async function analyzeItemDocument(params: {
+  uri: string;
+  fileName: string;
+  mimeType: string;
+}): Promise<ExtractedDocumentFields> {
+  const token = await getAccessToken();
+  if (!token) throw new Error('로그인이 필요합니다.');
+
+  const form = new FormData();
+  form.append('file', {
+    uri: params.uri,
+    name: params.fileName,
+    type: params.mimeType,
+  } as unknown as Blob);
+
+  const res = await fetch(`${API_BASE_URL}/api/documents/analyze`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || '문서 분석에 실패했습니다.');
+  }
+  return data.extracted_fields as ExtractedDocumentFields;
+}
 
 /**
  * 문서 파일(.pdf/.xlsx/.xls/.hwp/.docx/.txt)을 백엔드로 업로드해

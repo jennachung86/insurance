@@ -1,11 +1,11 @@
 import React from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from '../lib/supabase';
-import type { ScheduleItem } from '../types';
+import type { ScheduleRow } from '../types';
 
 interface Props {
-  items: ScheduleItem[]; // status === 'in_progress' 만 전달
-  onRowPress: (item: ScheduleItem) => void; // 셀 편집 모달 열기
+  rows: ScheduleRow[]; // status === 'in_progress' 인 (품목+일정) 행만 전달
+  onRowPress: (row: ScheduleRow) => void; // 셀 편집 모달 열기 (품목 전체를 연다)
   onChanged: () => void;
 }
 
@@ -18,13 +18,13 @@ const COLUMN_WIDTHS = {
   status: 90,
 };
 
-/** 화면 중앙: 편집 가능한 데이터 셀 테이블. 체크박스 클릭 시 완료 처리 → 하단으로 이동. */
-export default function DataTable({ items, onRowPress, onChanged }: Props) {
-  async function markCompleted(item: ScheduleItem) {
+/** 화면 중앙: 편집 가능한 데이터 셀 테이블. 한 품목에 여러 일정이 있으면 행이 여러 개로 나뉘어 보인다. */
+export default function DataTable({ rows, onRowPress, onChanged }: Props) {
+  async function markCompleted(row: ScheduleRow) {
     const { error } = await supabase
-      .from('items')
+      .from('item_schedules')
       .update({ status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', item.id);
+      .eq('id', row.schedule_id);
     if (error) {
       Alert.alert('처리 실패', error.message);
       return;
@@ -44,28 +44,28 @@ export default function DataTable({ items, onRowPress, onChanged }: Props) {
           <HeaderCell width={COLUMN_WIDTHS.status} text="상태" />
         </View>
 
-        {items.length === 0 ? (
+        {rows.length === 0 ? (
           <View style={styles.emptyRow}>
             <Text style={styles.emptyText}>진행 중인 항목이 없습니다. + 버튼으로 추가하세요.</Text>
           </View>
         ) : (
-          items.map((item) => (
-            <Pressable key={item.id} style={styles.row} onPress={() => onRowPress(item)}>
+          rows.map((row) => (
+            <Pressable key={row.schedule_id} style={styles.row} onPress={() => onRowPress(row)}>
               <View style={[styles.cell, { width: COLUMN_WIDTHS.check }]}>
                 <Pressable
                   style={styles.checkbox}
                   onPress={(e) => {
                     e.stopPropagation();
-                    markCompleted(item);
+                    markCompleted(row);
                   }}
                 >
                   <Text style={styles.checkboxMark}> </Text>
                 </Pressable>
               </View>
-              <Cell width={COLUMN_WIDTHS.name} text={item.item_name} bold />
-              <Cell width={COLUMN_WIDTHS.category} text={item.category} />
-              <Cell width={COLUMN_WIDTHS.dueDate} text={item.due_date ?? '-'} />
-              <Cell width={COLUMN_WIDTHS.assignee} text={item.assignee_name ?? '미지정'} />
+              <Cell width={COLUMN_WIDTHS.name} text={row.item_name} bold />
+              <Cell width={COLUMN_WIDTHS.category} text={row.category} />
+              <Cell width={COLUMN_WIDTHS.dueDate} text={row.due_date ?? '-'} />
+              <Cell width={COLUMN_WIDTHS.assignee} text={row.assignee_name ?? '미지정'} />
               <View style={[styles.cell, { width: COLUMN_WIDTHS.status }]}>
                 <View style={styles.statusPill}>
                   <Text style={styles.statusPillText}>진행중</Text>
