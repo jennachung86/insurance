@@ -12,8 +12,9 @@ export const ExtractedDocumentFields = z.object({
     .string()
     .describe('문서에서 식별한 항목명 (예: "자동차보험 - 삼성화재", "정기 소방시설 점검")'),
   category: z
-    .enum(['보험', '검사', '기타'])
-    .describe('문서 종류 분류'),
+    .string()
+    .nullable()
+    .describe('문서 종류 분류 - "보험"/"검사"처럼 일반적인 이름이면 그대로, 맥락에 맞는 더 구체적인 이름도 자유롭게 사용 가능'),
   issuer: z
     .string()
     .nullable()
@@ -71,7 +72,8 @@ export async function parseDocumentImage({
 }: ParseImageInput): Promise<ExtractedDocumentFields> {
   const outputFormat = betaZodOutputFormat(ExtractedDocumentFields);
 
-  const response = await client.beta.messages.create({
+  // Render 등 호스팅 환경의 프록시 타임아웃을 피하기 위해 스트리밍으로 요청한다.
+  const stream = client.beta.messages.stream({
     model: MODEL,
     max_tokens: 2048,
     system:
@@ -95,6 +97,7 @@ export async function parseDocumentImage({
     ],
     output_format: outputFormat,
   });
+  const response = await stream.finalMessage();
 
   const textBlock = response.content.find(
     (block): block is Anthropic.Beta.BetaTextBlock => block.type === 'text'

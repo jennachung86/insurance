@@ -2,6 +2,23 @@ import { API_BASE_URL, getAccessToken } from './supabase';
 import type { ExtractedDocumentFields, ItemDocument } from '../types';
 
 /**
+ * 서버 응답을 JSON으로 안전하게 파싱한다. 서버가 타임아웃/게이트웨이 에러로
+ * HTML 에러 페이지를 반환하면 "Unexpected character: <" 같은 원인 불명의
+ * JSON 파싱 에러 대신, 상태 코드에 맞는 이해하기 쉬운 메시지를 던진다.
+ */
+async function parseJsonResponse(res: Response): Promise<any> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    if (res.status === 502 || res.status === 504) {
+      throw new Error('서버 응답이 너무 오래 걸려 시간이 초과되었습니다. 파일 크기를 줄이거나 잠시 후 다시 시도해주세요.');
+    }
+    throw new Error(`서버에서 올바르지 않은 응답을 받았습니다. (상태 코드: ${res.status})`);
+  }
+}
+
+/**
  * 문서 파일(.pdf/.xlsx/.xls/.hwp/.docx/.txt)을 Claude로 분석해
  * 항목명/분류/만료일 등 구조화된 필드를 자동으로 추출한다.
  * 사진 OCR과 동일하게, 항목을 아직 저장하지 않은 신규 생성 화면에서도 사용할 수 있다.
@@ -27,7 +44,7 @@ export async function analyzeItemDocument(params: {
     body: form,
   });
 
-  const data = await res.json();
+  const data = await parseJsonResponse(res);
   if (!res.ok) {
     throw new Error(data.error || '문서 분석에 실패했습니다.');
   }
@@ -59,7 +76,7 @@ export async function analyzeItemDocumentBulk(params: {
     body: form,
   });
 
-  const data = await res.json();
+  const data = await parseJsonResponse(res);
   if (!res.ok) {
     throw new Error(data.error || '문서 일괄 분석에 실패했습니다.');
   }
@@ -94,7 +111,7 @@ export async function uploadItemDocument(params: {
     body: form,
   });
 
-  const data = await res.json();
+  const data = await parseJsonResponse(res);
   if (!res.ok) {
     throw new Error(data.error || '파일 업로드에 실패했습니다.');
   }
@@ -109,7 +126,7 @@ export async function deleteItemDocument(id: string): Promise<void> {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
-  const data = await res.json();
+  const data = await parseJsonResponse(res);
   if (!res.ok) {
     throw new Error(data.error || '삭제에 실패했습니다.');
   }

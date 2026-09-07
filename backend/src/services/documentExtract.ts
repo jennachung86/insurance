@@ -49,7 +49,13 @@ export async function extractDocumentText(buffer: Buffer, ext: SupportedDocument
       const parts = workbook.SheetNames.map((sheetName) => {
         const sheet = workbook.Sheets[sheetName];
         const csv = XLSX.utils.sheet_to_csv(sheet);
-        return `--- ${sheetName} ---\n${csv}`;
+        // 완전히 빈 행(콤마만 있는 줄)은 제거해 Claude에게 보내는 텍스트 양을 줄인다.
+        // (실제 항목이 몇 개 안 되는데도 서식 때문에 빈 행이 수십 줄씩 섞여 있는 표가 많음)
+        const cleanedCsv = csv
+          .split('\n')
+          .filter((line) => !/^,*\r?$/.test(line))
+          .join('\n');
+        return `--- ${sheetName} ---\n${cleanedCsv}`;
       });
       return parts.join('\n\n').trim();
     }
@@ -81,7 +87,9 @@ export async function analyzeDocumentWithClaude(
 
   const outputFormat = betaZodOutputFormat(ExtractedDocumentFields);
 
-  const response = await client.beta.messages.create({
+  // Render 등 호스팅 환경의 프록시 타임아웃을 피하기 위해 스트리밍으로 요청한다
+  // (non-streaming으로 큰 응답을 기다리면 응답 전송 전에 연결이 끊길 수 있다).
+  const stream = client.beta.messages.stream({
     model: 'claude-opus-5',
     max_tokens: 2048,
     system:
@@ -96,6 +104,7 @@ export async function analyzeDocumentWithClaude(
     ],
     output_format: outputFormat,
   });
+  const response = await stream.finalMessage();
 
   const textBlock = response.content.find(
     (block): block is Anthropic.Beta.BetaTextBlock => block.type === 'text'
@@ -124,7 +133,8 @@ export async function analyzeDocumentBulk(
 
   const outputFormat = betaZodOutputFormat(BulkExtractionResult);
 
-  const response = await client.beta.messages.create({
+  // 표가 크면 응답 생성이 오래 걸릴 수 있어(max_tokens 16000) 반드시 스트리밍으로 요청한다.
+  const stream = client.beta.messages.stream({
     model: 'claude-opus-5',
     max_tokens: 16000,
     system:
@@ -149,6 +159,7 @@ export async function analyzeDocumentBulk(
     ],
     output_format: outputFormat,
   });
+  const response = await stream.finalMessage();
 
   const textBlock = response.content.find(
     (block): block is Anthropic.Beta.BetaTextBlock => block.type === 'text'

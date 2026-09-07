@@ -37,7 +37,16 @@ export async function uploadPhotoForOcr(params: {
     body: form,
   });
 
-  const data = await res.json();
+  const text = await res.text();
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    if (res.status === 502 || res.status === 504) {
+      throw new Error('서버 응답이 너무 오래 걸려 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
+    }
+    throw new Error(`서버에서 올바르지 않은 응답을 받았습니다. (상태 코드: ${res.status})`);
+  }
   if (!res.ok) {
     throw new Error(data.error || 'OCR 처리에 실패했습니다.');
   }
