@@ -12,9 +12,13 @@ const PORT = process.env.PORT || 4001;
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
-app.use('/api/ocr', ocrRoutes);
-app.use('/api/items', itemsRoutes);
-app.use('/api/documents', documentsRoutes);
+// 라우터를 as any로 전달: multer 미들웨어가 끌어오는 @types/multer의 중첩된
+// @types/express 사본이 (Render 배포 환경에서만) express-serve-static-core 버전
+// 충돌을 일으켜 app.use/app.get의 오버로드 해석이 깨지는 경우가 있다.
+// skipLibCheck는 .d.ts 파일 간의 충돌은 걸러주지 못하므로 여기서 명시적으로 우회한다.
+app.use('/api/ocr', ocrRoutes as any);
+app.use('/api/items', itemsRoutes as any);
+app.use('/api/documents', documentsRoutes as any);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 

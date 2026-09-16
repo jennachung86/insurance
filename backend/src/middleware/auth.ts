@@ -2,6 +2,13 @@ import type { NextFunction, Request, Response } from 'express';
 
 export interface AuthedRequest extends Request {
   accessToken?: string;
+  // multer가 채워주는 필드. @types/multer를 안 쓰므로(src/types/multer.d.ts 참고) 여기서 직접 선언한다.
+  file?: {
+    originalname: string;
+    mimetype: string;
+    size: number;
+    buffer: Buffer;
+  };
 }
 
 /**

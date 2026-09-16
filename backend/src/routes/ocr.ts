@@ -16,7 +16,7 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (_req: unknown, file: { mimetype: string }, cb: (error: Error | null, acceptFile?: boolean) => void) => {
     // Claude 비전은 HEIC/HEIF를 지원하지 않는다 - 모바일에서 JPEG로 촬영/변환해 보내야 한다.
     const ok = (SUPPORTED_IMAGE_TYPES as string[]).includes(file.mimetype);
     if (!ok) {

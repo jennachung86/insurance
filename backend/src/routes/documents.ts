@@ -16,7 +16,7 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (_req: unknown, file: { originalname: string }, cb: (error: Error | null, acceptFile?: boolean) => void) => {
     const ext = path.extname(file.originalname).toLowerCase();
     const ok = (SUPPORTED_DOCUMENT_EXTENSIONS as readonly string[]).includes(ext);
     if (!ok) {
