@@ -31,5 +31,11 @@
   },
   "devDependencies": {
     "tsx": "^4.16.2"
+  },
+  "overrides": {
+    "@types/express-serve-static-core": "4.19.9"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
