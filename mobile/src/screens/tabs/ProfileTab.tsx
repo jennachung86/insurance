@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { supabase } from '../../lib/supabase';
+import { authenticateWithBiometric, isBiometricAvailable, isBiometricLockEnabled, setBiometricLockEnabled } from '../../lib/biometric';
 import type { OrgMember } from '../../types';
 
 interface Props {
@@ -22,10 +23,15 @@ const ROLE_LABELS: Record<string, string> = {
 export default function ProfileTab({ title, orgId, userId, userEmail, members, onOpenSettings }: Props) {
   const [fullName, setFullName] = useState<string>('');
   const [orgName, setOrgName] = useState<string>('');
+  const [recoveryEmail, setRecoveryEmail] = useState<string>('');
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [orgNameDraft, setOrgNameDraft] = useState('');
+  const [recoveryEmailDraft, setRecoveryEmailDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricBusy, setBiometricBusy] = useState(false);
 
   const myRole = members.find((m) => m.user_id === userId)?.role ?? 'member';
   const canEditOrgName = myRole === 'master';
@@ -33,10 +39,13 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
   useEffect(() => {
     supabase
       .from('profiles')
-      .select('full_name')
+      .select('full_name, recovery_email')
       .eq('id', userId)
       .maybeSingle()
-      .then(({ data }) => setFullName(data?.full_name ?? ''));
+      .then(({ data }) => {
+        setFullName(data?.full_name ?? '');
+        setRecoveryEmail(data?.recovery_email ?? '');
+      });
 
     supabase
       .from('organizations')
@@ -44,7 +53,24 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
       .eq('id', orgId)
       .maybeSingle()
       .then(({ data }) => setOrgName(data?.name ?? ''));
+
+    isBiometricAvailable().then(setBiometricSupported);
+    isBiometricLockEnabled().then(setBiometricEnabled);
   }, [orgId, userId]);
+
+  async function handleToggleBiometric(next: boolean) {
+    if (next) {
+      setBiometricBusy(true);
+      try {
+        const ok = await authenticateWithBiometric();
+        if (!ok) return;
+      } finally {
+        setBiometricBusy(false);
+      }
+    }
+    await setBiometricLockEnabled(next);
+    setBiometricEnabled(next);
+  }
 
   // '@insurance-schedule.local' 로 끝나면 실제 이메일이 아니라 내부용 가짜 이메일(아이디 로그인)이므로 아이디만 보여준다.
   const displayLoginId = userEmail.endsWith('@insurance-schedule.local')
@@ -54,6 +80,7 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
   function startEditing() {
     setNameDraft(fullName);
     setOrgNameDraft(orgName);
+    setRecoveryEmailDraft(recoveryEmail);
     setEditing(true);
   }
 
@@ -62,11 +89,20 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
       Alert.alert('입력 필요', '이름을 입력해주세요.');
       return;
     }
+    if (recoveryEmailDraft.trim() && !recoveryEmailDraft.includes('@')) {
+      Alert.alert('입력 오류', '복구용 이메일 형식이 올바르지 않습니다.');
+      return;
+    }
     setSaving(true);
     try {
+      // login_id는 가입 시 이메일 접두사로부터 뒤늦게 채워 넣어 아이디/비밀번호 찾기에서 조회할 수 있게 한다.
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ full_name: nameDraft.trim() })
+        .update({
+          full_name: nameDraft.trim(),
+          login_id: displayLoginId.trim().toLowerCase(),
+          recovery_email: recoveryEmailDraft.trim() ? recoveryEmailDraft.trim().toLowerCase() : null,
+        })
         .eq('id', userId);
       if (profileError) throw profileError;
 
@@ -80,6 +116,7 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
       }
 
       setFullName(nameDraft.trim());
+      setRecoveryEmail(recoveryEmailDraft.trim());
       setEditing(false);
     } catch (err) {
       Alert.alert('저장 실패', err instanceof Error ? err.message : String(err));
@@ -123,6 +160,17 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
               </>
             )}
 
+            <Text style={styles.editLabel}>복구용 이메일 (아이디/비밀번호 찾기에 사용)</Text>
+            <TextInput
+              style={styles.editInput}
+              value={recoveryEmailDraft}
+              onChangeText={setRecoveryEmailDraft}
+              placeholder="example@gmail.com"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+            />
+
             <Text style={styles.loginId}>{displayLoginId}</Text>
 
             <View style={styles.editButtonsRow}>
@@ -142,11 +190,19 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
             <View style={styles.infoCard}>
               <InfoRow label="소속 조직" value={orgName || '-'} />
               <InfoRow label="역할" value={ROLE_LABELS[myRole] ?? myRole} />
+              <InfoRow label="복구용 이메일" value={recoveryEmail || '미설정'} />
             </View>
 
             <Pressable style={styles.editProfileButton} onPress={startEditing}>
               <Text style={styles.editProfileButtonText}>✏️ 내 정보 수정</Text>
             </Pressable>
+
+            {biometricSupported && (
+              <View style={styles.biometricRow}>
+                <Text style={styles.biometricLabel}>🔒 지문/얼굴 인식으로 빠른 잠금 해제</Text>
+                <Switch value={biometricEnabled} onValueChange={handleToggleBiometric} disabled={biometricBusy} />
+              </View>
+            )}
 
             <Pressable style={styles.settingsButton} onPress={onOpenSettings}>
               <Text style={styles.settingsButtonText}>⚙️ 분류 · 항목 · 탭 이름 설정</Text>
@@ -225,6 +281,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   editProfileButtonText: { color: '#374151', fontWeight: '700', fontSize: 14 },
+  biometricRow: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 12,
+  },
+  biometricLabel: { fontSize: 13, fontWeight: '600', color: '#374151', flex: 1, marginRight: 8 },
   settingsButton: {
     width: '100%',
     paddingVertical: 12,

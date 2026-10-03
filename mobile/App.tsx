@@ -3,10 +3,14 @@ import { ActivityIndicator, Alert, Button, SafeAreaView, StyleSheet, Text, TextI
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './src/lib/supabase';
 import MainScreen from './src/screens/MainScreen';
+import AccountRecoveryModal from './src/components/AccountRecoveryModal';
+import { authenticateWithBiometric, isBiometricLockEnabled } from './src/lib/biometric';
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined); // undefined = 로딩중
   const [orgId, setOrgId] = useState<string | null>(null);
+  // undefined = 아직 확인 전, true = 잠금 활성 상태(인증 필요), false = 통과됨/비활성
+  const [biometricLocked, setBiometricLocked] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -25,6 +29,12 @@ export default function App() {
       .then(({ data }) => setOrgId(data?.org_id ?? null));
   }, [session]);
 
+  // 앱 최초 실행 시 1회만 지문 잠금 여부를 확인한다 (세션 토큰 갱신 때마다 다시 잠그지 않음).
+  useEffect(() => {
+    if (!session || biometricLocked !== undefined) return;
+    isBiometricLockEnabled().then((enabled) => setBiometricLocked(enabled));
+  }, [session, biometricLocked]);
+
   if (session === undefined) {
     return (
       <SafeAreaView style={styles.center}>
@@ -35,6 +45,10 @@ export default function App() {
 
   if (!session) {
     return <LoginScreen />;
+  }
+
+  if (biometricLocked) {
+    return <BiometricLockScreen onUnlock={() => setBiometricLocked(false)} />;
   }
 
   if (!orgId) {
@@ -48,6 +62,38 @@ export default function App() {
   return (
     <SafeAreaView style={styles.flex}>
       <MainScreen orgId={orgId} userId={session.user.id} userEmail={session.user.email ?? ''} />
+    </SafeAreaView>
+  );
+}
+
+/** 지문/얼굴 인식 잠금이 켜져 있을 때 앱 실행 직후 표시되는 잠금 해제 화면. */
+function BiometricLockScreen({ onUnlock }: { onUnlock: () => void }) {
+  const [authenticating, setAuthenticating] = useState(false);
+
+  async function tryUnlock() {
+    setAuthenticating(true);
+    try {
+      const success = await authenticateWithBiometric();
+      if (success) onUnlock();
+    } finally {
+      setAuthenticating(false);
+    }
+  }
+
+  useEffect(() => {
+    tryUnlock();
+  }, []);
+
+  return (
+    <SafeAreaView style={styles.center}>
+      <Text style={styles.loginTitle}>🔒 잠금 해제</Text>
+      <Text style={styles.infoText}>지문 또는 얼굴 인식으로 잠금을 해제하세요.</Text>
+      <Button title={authenticating ? '인증 중...' : '다시 시도'} onPress={tryUnlock} disabled={authenticating} />
+      <View style={styles.switchModeRow}>
+        <Text style={styles.switchModeText} onPress={() => supabase.auth.signOut()}>
+          다른 계정으로 로그아웃
+        </Text>
+      </View>
     </SafeAreaView>
   );
 }
@@ -67,7 +113,9 @@ function LoginScreen() {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [recoveryEmail, setRecoveryEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [recoveryModalVisible, setRecoveryModalVisible] = useState(false);
 
   async function handleLogin() {
     if (!loginId || !password) {
@@ -96,6 +144,10 @@ function LoginScreen() {
       Alert.alert('입력 오류', '비밀번호는 6자 이상이어야 합니다.');
       return;
     }
+    if (!recoveryEmail.trim() || !recoveryEmail.includes('@')) {
+      Alert.alert('입력 오류', '아이디/비밀번호를 잊어버렸을 때 쓸 복구용 이메일을 올바르게 입력하세요.');
+      return;
+    }
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
       email: toAuthEmail(loginId),
@@ -109,7 +161,12 @@ function LoginScreen() {
 
     const userId = data.user?.id;
     if (userId) {
-      await supabase.from('profiles').upsert({ id: userId, full_name: fullName || loginId });
+      await supabase.from('profiles').upsert({
+        id: userId,
+        full_name: fullName || loginId,
+        login_id: loginId.trim().toLowerCase(),
+        recovery_email: recoveryEmail.trim().toLowerCase(),
+      });
     }
     setLoading(false);
 
@@ -153,6 +210,17 @@ function LoginScreen() {
         value={password}
         onChangeText={setPassword}
       />
+      {mode === 'signup' && (
+        <TextInput
+          style={styles.input}
+          placeholder="복구용 이메일 (아이디/비밀번호 찾기에 사용)"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          value={recoveryEmail}
+          onChangeText={setRecoveryEmail}
+        />
+      )}
 
       {mode === 'login' ? (
         <Button title={loading ? '로그인 중...' : '로그인'} onPress={handleLogin} disabled={loading} />
@@ -168,6 +236,15 @@ function LoginScreen() {
           {mode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
         </Text>
       </View>
+      {mode === 'login' && (
+        <View style={styles.switchModeRow}>
+          <Text style={styles.switchModeText} onPress={() => setRecoveryModalVisible(true)}>
+            아이디/비밀번호를 잊으셨나요?
+          </Text>
+        </View>
+      )}
+
+      <AccountRecoveryModal visible={recoveryModalVisible} onClose={() => setRecoveryModalVisible(false)} />
     </SafeAreaView>
   );
 }

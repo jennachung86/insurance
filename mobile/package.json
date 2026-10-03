@@ -17,6 +17,7 @@
     "expo-document-picker": "~12.0.2",
     "expo-file-system": "~17.0.1",
     "expo-image-picker": "~15.1.0",
+    "expo-local-authentication": "~14.0.1",
     "react": "18.2.0",
     "react-native": "0.74.5",
     "react-native-url-polyfill": "^2.0.0"

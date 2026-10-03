@@ -4,6 +4,7 @@ import express from 'express';
 import ocrRoutes from './routes/ocr.js';
 import itemsRoutes from './routes/items.js';
 import documentsRoutes from './routes/documents.js';
+import authRoutes from './routes/auth.js';
 import { startAlarmScheduler } from './services/alarmScheduler.js';
 
 const app = express();
@@ -19,6 +20,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use('/api/ocr', ocrRoutes as any);
 app.use('/api/items', itemsRoutes as any);
 app.use('/api/documents', documentsRoutes as any);
+app.use('/api/auth', authRoutes as any);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
