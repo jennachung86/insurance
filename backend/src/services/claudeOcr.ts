@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 
 // API 키가 없으면 SDK가 `ant auth login` 프로필을 자동으로 사용한다.
@@ -57,23 +57,21 @@ interface ParseImageInput {
 }
 
 /**
- * 영수증/보험증권/검사표 사진을 Claude Vision + 구조화된 출력(betaZodOutputFormat)으로
+ * 영수증/보험증권/검사표 사진을 Claude Vision + 구조화된 출력(zodOutputFormat)으로
  * 파싱해 셀에 바로 채워 넣을 수 있는 필드로 반환한다.
  *
- * 참고: 설치된 @anthropic-ai/sdk 버전에서 client.beta.messages.parse()의 반환 타입은
- * output_format 파라미터로부터 parsed_output의 타입을 안정적으로 추론하지 못하는
- * 제네릭 한계가 있다. 이를 피하기 위해 .create() + outputFormat.parse(text) 조합을
- * 직접 사용한다 - AutoParseableBetaOutputFormat 자체가 파싱 함수를 갖고 있어 동일한
- * 검증 효과를 얻으면서도 타입이 명확하다.
+ * .stream() + outputFormat.parse(text) 조합을 직접 사용한다 - client.messages.parse()는
+ * non-streaming이라 호스팅 환경의 프록시 타임아웃에 걸릴 수 있고, AutoParseableTextFormat
+ * 자체가 파싱 함수를 갖고 있어 수동 파싱으로도 동일한 검증 효과를 얻는다.
  */
 export async function parseDocumentImage({
   base64Data,
   mediaType,
 }: ParseImageInput): Promise<ExtractedDocumentFields> {
-  const outputFormat = betaZodOutputFormat(ExtractedDocumentFields);
+  const outputFormat = zodOutputFormat(ExtractedDocumentFields);
 
   // Render 등 호스팅 환경의 프록시 타임아웃을 피하기 위해 스트리밍으로 요청한다.
-  const stream = client.beta.messages.stream({
+  const stream = client.messages.stream({
     model: MODEL,
     max_tokens: 2048,
     system:
@@ -95,12 +93,12 @@ export async function parseDocumentImage({
         ],
       },
     ],
-    output_format: outputFormat,
+    output_config: { format: outputFormat },
   });
   const response = await stream.finalMessage();
 
   const textBlock = response.content.find(
-    (block): block is Anthropic.Beta.BetaTextBlock => block.type === 'text'
+    (block): block is Anthropic.TextBlock => block.type === 'text'
   );
   if (!textBlock) {
     throw new Error('Claude가 문서에서 구조화된 데이터를 추출하지 못했습니다.');

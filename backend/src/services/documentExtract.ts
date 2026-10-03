@@ -2,7 +2,7 @@ import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import Anthropic from '@anthropic-ai/sdk';
-import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
+import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod';
 
 const client = new Anthropic();
@@ -85,11 +85,11 @@ export async function analyzeDocumentWithClaude(
 ): Promise<ExtractedDocumentFields> {
   const extractedText = await extractDocumentText(buffer, ext);
 
-  const outputFormat = betaZodOutputFormat(ExtractedDocumentFields);
+  const outputFormat = zodOutputFormat(ExtractedDocumentFields);
 
   // Render 등 호스팅 환경의 프록시 타임아웃을 피하기 위해 스트리밍으로 요청한다
   // (non-streaming으로 큰 응답을 기다리면 응답 전송 전에 연결이 끊길 수 있다).
-  const stream = client.beta.messages.stream({
+  const stream = client.messages.stream({
     model: 'claude-opus-5',
     max_tokens: 2048,
     system:
@@ -102,12 +102,12 @@ export async function analyzeDocumentWithClaude(
         content: `이 문서에서 항목명, 분류, 발급기관, 만료일/납입일, 계약 시작일, 금액, 문서번호를 추출해줘.\n\n문서 내용:\n${extractedText}`,
       },
     ],
-    output_format: outputFormat,
+    output_config: { format: outputFormat },
   });
   const response = await stream.finalMessage();
 
   const textBlock = response.content.find(
-    (block): block is Anthropic.Beta.BetaTextBlock => block.type === 'text'
+    (block): block is Anthropic.TextBlock => block.type === 'text'
   );
   if (!textBlock) {
     throw new Error('Claude가 문서에서 구조화된 데이터를 추출하지 못했습니다.');
@@ -131,10 +131,10 @@ export async function analyzeDocumentBulk(
 ): Promise<ExtractedDocumentFields[]> {
   const extractedText = await extractDocumentText(buffer, ext);
 
-  const outputFormat = betaZodOutputFormat(BulkExtractionResult);
+  const outputFormat = zodOutputFormat(BulkExtractionResult);
 
   // 표가 크면 응답 생성이 오래 걸릴 수 있어(max_tokens 16000) 반드시 스트리밍으로 요청한다.
-  const stream = client.beta.messages.stream({
+  const stream = client.messages.stream({
     model: 'claude-opus-5',
     max_tokens: 16000,
     system:
@@ -157,12 +157,12 @@ export async function analyzeDocumentBulk(
         content: `이 표 문서에서 관리해야 할 항목들을 모두 각각 추출해줘.\n\n문서 내용:\n${extractedText}`,
       },
     ],
-    output_format: outputFormat,
+    output_config: { format: outputFormat },
   });
   const response = await stream.finalMessage();
 
   const textBlock = response.content.find(
-    (block): block is Anthropic.Beta.BetaTextBlock => block.type === 'text'
+    (block): block is Anthropic.TextBlock => block.type === 'text'
   );
   if (!textBlock) {
     throw new Error('Claude가 문서에서 구조화된 데이터를 추출하지 못했습니다.');
