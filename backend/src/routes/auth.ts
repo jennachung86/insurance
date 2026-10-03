@@ -38,7 +38,7 @@ router.post('/find-id', async (req, res) => {
     res.json({ login_ids: loginIds.map(maskLoginId) });
   } catch (err) {
     console.error('아이디 찾기 실패:', err);
-    const message = err instanceof Error ? err.message : '아이디 찾기 중 오류가 발생했습니다.';
+    const message = extractErrorMessage(err) || '아이디 찾기 중 오류가 발생했습니다.';
     res.status(500).json({ error: message });
   }
 });
@@ -83,9 +83,18 @@ router.post('/reset-password', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('비밀번호 재설정 실패:', err);
-    const message = err instanceof Error ? err.message : '비밀번호 재설정 중 오류가 발생했습니다.';
+    const message = extractErrorMessage(err) || '비밀번호 재설정 중 오류가 발생했습니다.';
     res.status(500).json({ error: message });
   }
 });
+
+/** Error 인스턴스가 아닌 Postgrest/Auth 에러 객체({message, details, ...})에서도 메시지를 뽑아낸다. */
+function extractErrorMessage(err: unknown): string | null {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string') {
+    return (err as any).message;
+  }
+  return null;
+}
 
 export default router;
