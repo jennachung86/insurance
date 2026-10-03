@@ -1,4 +1,5 @@
 import { API_BASE_URL, getAccessToken } from './supabase';
+import { uploadMultipart } from './upload';
 import type { ExtractedDocumentFields, ItemDocument } from '../types';
 
 /**
@@ -12,7 +13,7 @@ async function parseJsonResponse(res: Response): Promise<any> {
     return JSON.parse(text);
   } catch {
     if (res.status === 502 || res.status === 504) {
-      throw new Error('서버 응답이 너무 오래 걸려 시간이 초과되었습니다. 파일 크기를 줄이거나 잠시 후 다시 시도해주세요.');
+      throw new Error('서버 응답이 너무 오래 걸려 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.');
     }
     throw new Error(`서버에서 올바르지 않은 응답을 받았습니다. (상태 코드: ${res.status})`);
   }
@@ -31,23 +32,13 @@ export async function analyzeItemDocument(params: {
   const token = await getAccessToken();
   if (!token) throw new Error('로그인이 필요합니다.');
 
-  const form = new FormData();
-  form.append('file', {
+  const data = await uploadMultipart({
+    url: `${API_BASE_URL}/api/documents/analyze`,
     uri: params.uri,
-    name: params.fileName,
-    type: params.mimeType,
-  } as unknown as Blob);
-
-  const res = await fetch(`${API_BASE_URL}/api/documents/analyze`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: form,
+    fieldName: 'file',
+    mimeType: params.mimeType,
+    token,
   });
-
-  const data = await parseJsonResponse(res);
-  if (!res.ok) {
-    throw new Error(data.error || '문서 분석에 실패했습니다.');
-  }
   return data.extracted_fields as ExtractedDocumentFields;
 }
 
@@ -63,23 +54,13 @@ export async function analyzeItemDocumentBulk(params: {
   const token = await getAccessToken();
   if (!token) throw new Error('로그인이 필요합니다.');
 
-  const form = new FormData();
-  form.append('file', {
+  const data = await uploadMultipart({
+    url: `${API_BASE_URL}/api/documents/bulk-analyze`,
     uri: params.uri,
-    name: params.fileName,
-    type: params.mimeType,
-  } as unknown as Blob);
-
-  const res = await fetch(`${API_BASE_URL}/api/documents/bulk-analyze`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: form,
+    fieldName: 'file',
+    mimeType: params.mimeType,
+    token,
   });
-
-  const data = await parseJsonResponse(res);
-  if (!res.ok) {
-    throw new Error(data.error || '문서 일괄 분석에 실패했습니다.');
-  }
   return data.items as ExtractedDocumentFields[];
 }
 
@@ -97,24 +78,14 @@ export async function uploadItemDocument(params: {
   const token = await getAccessToken();
   if (!token) throw new Error('로그인이 필요합니다.');
 
-  const form = new FormData();
-  form.append('file', {
+  const data = await uploadMultipart({
+    url: `${API_BASE_URL}/api/documents/upload`,
     uri: params.uri,
-    name: params.fileName,
-    type: params.mimeType,
-  } as unknown as Blob);
-  form.append('item_id', params.itemId);
-
-  const res = await fetch(`${API_BASE_URL}/api/documents/upload`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: form,
+    fieldName: 'file',
+    mimeType: params.mimeType,
+    token,
+    fields: { item_id: params.itemId },
   });
-
-  const data = await parseJsonResponse(res);
-  if (!res.ok) {
-    throw new Error(data.error || '파일 업로드에 실패했습니다.');
-  }
   return data.document as ItemDocument;
 }
 
