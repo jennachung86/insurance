@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Button, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Button, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './src/lib/supabase';
 import MainScreen from './src/screens/MainScreen';
@@ -182,67 +182,69 @@ function LoginScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.center}>
-      <Text style={styles.loginTitle}>
-        {mode === 'login' ? '일정 공동관리 로그인' : '회원가입'}
-      </Text>
+    <SafeAreaView style={styles.flex}>
+      <ScrollView contentContainerStyle={styles.loginScroll} keyboardShouldPersistTaps="handled">
+        <Text style={styles.loginTitle}>
+          {mode === 'login' ? '일정 공동관리 로그인' : '회원가입'}
+        </Text>
 
-      {mode === 'signup' && (
+        {mode === 'signup' && (
+          <TextInput
+            style={styles.input}
+            placeholder="이름"
+            value={fullName}
+            onChangeText={setFullName}
+          />
+        )}
         <TextInput
           style={styles.input}
-          placeholder="이름"
-          value={fullName}
-          onChangeText={setFullName}
-        />
-      )}
-      <TextInput
-        style={styles.input}
-        placeholder="아이디 (또는 이메일)"
-        autoCapitalize="none"
-        autoCorrect={false}
-        value={loginId}
-        onChangeText={setLoginId}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="비밀번호 (6자 이상)"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      {mode === 'signup' && (
-        <TextInput
-          style={styles.input}
-          placeholder="복구용 이메일 (아이디/비밀번호 찾기에 사용)"
+          placeholder="아이디 (또는 이메일)"
           autoCapitalize="none"
           autoCorrect={false}
-          keyboardType="email-address"
-          value={recoveryEmail}
-          onChangeText={setRecoveryEmail}
+          value={loginId}
+          onChangeText={setLoginId}
         />
-      )}
+        <TextInput
+          style={styles.input}
+          placeholder="비밀번호 (6자 이상)"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+        {mode === 'signup' && (
+          <TextInput
+            style={styles.input}
+            placeholder="복구용 이메일 (아이디/비밀번호 찾기에 사용)"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            value={recoveryEmail}
+            onChangeText={setRecoveryEmail}
+          />
+        )}
 
-      {mode === 'login' ? (
-        <Button title={loading ? '로그인 중...' : '로그인'} onPress={handleLogin} disabled={loading} />
-      ) : (
-        <Button title={loading ? '가입 중...' : '회원가입'} onPress={handleSignUp} disabled={loading} />
-      )}
+        {mode === 'login' ? (
+          <Button title={loading ? '로그인 중...' : '로그인'} onPress={handleLogin} disabled={loading} />
+        ) : (
+          <Button title={loading ? '가입 중...' : '회원가입'} onPress={handleSignUp} disabled={loading} />
+        )}
 
-      <View style={styles.switchModeRow}>
-        <Text
-          style={styles.switchModeText}
-          onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}
-        >
-          {mode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
-        </Text>
-      </View>
-      {mode === 'login' && (
         <View style={styles.switchModeRow}>
-          <Text style={styles.switchModeText} onPress={() => setRecoveryModalVisible(true)}>
-            아이디/비밀번호를 잊으셨나요?
+          <Text
+            style={styles.switchModeText}
+            onPress={() => setMode(mode === 'login' ? 'signup' : 'login')}
+          >
+            {mode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
           </Text>
         </View>
-      )}
+        {mode === 'login' && (
+          <View style={styles.switchModeRow}>
+            <Text style={styles.switchModeText} onPress={() => setRecoveryModalVisible(true)}>
+              아이디/비밀번호를 잊으셨나요?
+            </Text>
+          </View>
+        )}
+      </ScrollView>
 
       <AccountRecoveryModal visible={recoveryModalVisible} onClose={() => setRecoveryModalVisible(false)} />
     </SafeAreaView>
@@ -252,6 +254,7 @@ function LoginScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
+  loginScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
   infoText: { fontSize: 14, color: '#6b7280', textAlign: 'center' },
   loginTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
   input: {
