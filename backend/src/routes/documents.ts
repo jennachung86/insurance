@@ -169,7 +169,15 @@ router.post('/analyze', requireAuth, upload.single('file'), async (req: AuthedRe
 router.post('/bulk-analyze', requireAuth, upload.single('file'), async (req: AuthedRequest, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: '파일(file)이 필요합니다.' });
+      // 임시 진단 정보 - 모바일에서 req.file이 비어 오는 원인을 파악하기 위함.
+      return res.status(400).json({
+        error: '파일(file)이 필요합니다.',
+        debug: {
+          contentType: req.headers['content-type'] || null,
+          contentLength: req.headers['content-length'] || null,
+          bodyKeys: req.body ? Object.keys(req.body) : [],
+        },
+      });
     }
 
     const ext = path.extname(req.file.originalname).toLowerCase() as SupportedDocumentExtension;

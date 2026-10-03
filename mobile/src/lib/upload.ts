@@ -33,7 +33,8 @@ export async function uploadMultipart(params: {
     throw new Error(`서버에서 올바르지 않은 응답을 받았습니다. (상태 코드: ${result.status})`);
   }
   if (result.status < 200 || result.status >= 300) {
-    throw new Error(data.error || '요청 처리에 실패했습니다.');
+    const debugSuffix = data.debug ? `\n[debug] ${JSON.stringify(data.debug)}` : '';
+    throw new Error((data.error || '요청 처리에 실패했습니다.') + debugSuffix);
   }
   return data;
 }
