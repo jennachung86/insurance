@@ -114,6 +114,7 @@ function LoginScreen() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [recoveryModalVisible, setRecoveryModalVisible] = useState(false);
 
@@ -144,8 +145,17 @@ function LoginScreen() {
       Alert.alert('입력 오류', '비밀번호는 6자 이상이어야 합니다.');
       return;
     }
-    if (!recoveryEmail.trim() || !recoveryEmail.includes('@')) {
-      Alert.alert('입력 오류', '아이디/비밀번호를 잊어버렸을 때 쓸 복구용 이메일을 올바르게 입력하세요.');
+    const phoneDigits = phoneNumber.replace(/\D/g, '');
+    if (!phoneDigits && !recoveryEmail.trim()) {
+      Alert.alert('입력 오류', '아이디/비밀번호 찾기에 쓸 휴대폰 번호 또는 복구용 이메일 중 하나는 입력하세요.');
+      return;
+    }
+    if (recoveryEmail.trim() && !recoveryEmail.includes('@')) {
+      Alert.alert('입력 오류', '복구용 이메일 형식이 올바르지 않습니다.');
+      return;
+    }
+    if (phoneDigits && !/^01\d{8,9}$/.test(phoneDigits)) {
+      Alert.alert('입력 오류', '휴대폰 번호 형식이 올바르지 않습니다. (예: 01012345678)');
       return;
     }
     setLoading(true);
@@ -165,7 +175,8 @@ function LoginScreen() {
         id: userId,
         full_name: fullName || loginId,
         login_id: loginId.trim().toLowerCase(),
-        recovery_email: recoveryEmail.trim().toLowerCase(),
+        recovery_email: recoveryEmail.trim() ? recoveryEmail.trim().toLowerCase() : null,
+        phone_number: phoneDigits || null,
       });
     }
     setLoading(false);
@@ -212,15 +223,24 @@ function LoginScreen() {
           onChangeText={setPassword}
         />
         {mode === 'signup' && (
-          <TextInput
-            style={styles.input}
-            placeholder="복구용 이메일 (아이디/비밀번호 찾기에 사용)"
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            value={recoveryEmail}
-            onChangeText={setRecoveryEmail}
-          />
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="휴대폰 번호 (아이디/비밀번호 찾기 문자 인증)"
+              keyboardType="phone-pad"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="복구용 이메일 (이메일 인증용, 둘 중 하나는 필수)"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              value={recoveryEmail}
+              onChangeText={setRecoveryEmail}
+            />
+          </>
         )}
 
         {mode === 'login' ? (

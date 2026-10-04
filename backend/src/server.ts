@@ -10,6 +10,9 @@ import { startAlarmScheduler } from './services/alarmScheduler.js';
 const app = express();
 const PORT = process.env.PORT || 4001;
 
+// Render 등 프록시 뒤에서 req.ip가 실제 클라이언트 IP가 되도록 한다 (인증번호 발송 속도 제한에 사용).
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 

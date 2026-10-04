@@ -28,6 +28,8 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
   const [nameDraft, setNameDraft] = useState('');
   const [orgNameDraft, setOrgNameDraft] = useState('');
   const [recoveryEmailDraft, setRecoveryEmailDraft] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [phoneNumberDraft, setPhoneNumberDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [biometricSupported, setBiometricSupported] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -39,12 +41,13 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
   useEffect(() => {
     supabase
       .from('profiles')
-      .select('full_name, recovery_email')
+      .select('full_name, recovery_email, phone_number')
       .eq('id', userId)
       .maybeSingle()
       .then(({ data }) => {
         setFullName(data?.full_name ?? '');
         setRecoveryEmail(data?.recovery_email ?? '');
+        setPhoneNumber(data?.phone_number ?? '');
       });
 
     supabase
@@ -81,6 +84,7 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
     setNameDraft(fullName);
     setOrgNameDraft(orgName);
     setRecoveryEmailDraft(recoveryEmail);
+    setPhoneNumberDraft(phoneNumber);
     setEditing(true);
   }
 
@@ -93,6 +97,11 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
       Alert.alert('입력 오류', '복구용 이메일 형식이 올바르지 않습니다.');
       return;
     }
+    const phoneDigits = phoneNumberDraft.replace(/\D/g, '');
+    if (phoneDigits && !/^01\d{8,9}$/.test(phoneDigits)) {
+      Alert.alert('입력 오류', '휴대폰 번호 형식이 올바르지 않습니다. (예: 01012345678)');
+      return;
+    }
     setSaving(true);
     try {
       // login_id는 가입 시 이메일 접두사로부터 뒤늦게 채워 넣어 아이디/비밀번호 찾기에서 조회할 수 있게 한다.
@@ -102,6 +111,7 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
           full_name: nameDraft.trim(),
           login_id: displayLoginId.trim().toLowerCase(),
           recovery_email: recoveryEmailDraft.trim() ? recoveryEmailDraft.trim().toLowerCase() : null,
+          phone_number: phoneDigits || null,
         })
         .eq('id', userId);
       if (profileError) throw profileError;
@@ -117,6 +127,7 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
 
       setFullName(nameDraft.trim());
       setRecoveryEmail(recoveryEmailDraft.trim());
+      setPhoneNumber(phoneDigits);
       setEditing(false);
     } catch (err) {
       Alert.alert('저장 실패', err instanceof Error ? err.message : String(err));
@@ -160,7 +171,16 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
               </>
             )}
 
-            <Text style={styles.editLabel}>복구용 이메일 (아이디/비밀번호 찾기에 사용)</Text>
+            <Text style={styles.editLabel}>휴대폰 번호 (아이디/비밀번호 찾기 문자 인증, 알림 문자 수신)</Text>
+            <TextInput
+              style={styles.editInput}
+              value={phoneNumberDraft}
+              onChangeText={setPhoneNumberDraft}
+              placeholder="01012345678"
+              keyboardType="phone-pad"
+            />
+
+            <Text style={styles.editLabel}>복구용 이메일 (이메일 인증용)</Text>
             <TextInput
               style={styles.editInput}
               value={recoveryEmailDraft}
@@ -190,6 +210,7 @@ export default function ProfileTab({ title, orgId, userId, userEmail, members, o
             <View style={styles.infoCard}>
               <InfoRow label="소속 조직" value={orgName || '-'} />
               <InfoRow label="역할" value={ROLE_LABELS[myRole] ?? myRole} />
+              <InfoRow label="휴대폰 번호" value={phoneNumber || '미설정'} />
               <InfoRow label="복구용 이메일" value={recoveryEmail || '미설정'} />
             </View>
 
