@@ -51,6 +51,9 @@ async function deliver(channel: RecoveryChannel, target: string, code: string): 
     port: Number(process.env.SMTP_PORT || 465),
     secure: Number(process.env.SMTP_PORT || 465) === 465,
     auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
   });
   await transporter.sendMail({
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
