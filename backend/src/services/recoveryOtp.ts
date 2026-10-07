@@ -55,12 +55,17 @@ async function deliver(channel: RecoveryChannel, target: string, code: string): 
     greetingTimeout: 10_000,
     socketTimeout: 15_000,
   });
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: target,
-    subject: '[일정 공동관리] 본인 확인 인증번호',
-    text,
-  });
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: target,
+      subject: '[일정 공동관리] 본인 확인 인증번호',
+      text,
+    });
+  } catch (err) {
+    const where = `${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 465}`;
+    throw new Error(`메일 서버(${where}) 발송 실패: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 /**
